@@ -1,0 +1,90 @@
+import os
+import weaviate
+from pathlib import Path
+import json
+import logging
+from weaviate.batch import Batch
+from weaviate.util import generate_uuid5
+
+weaviate_url = "http://localhost:8080"
+client = weaviate.Client(weaviate_url)
+client.is_ready()
+headers = {"Content-Type": "application/json"}
+
+# Directory path containing JSON files
+directory = "/home/lkamperh/miniconda3/PROD20230409"
+cwd = os.getcwd()
+
+pd = Path(cwd).parents[0]
+
+collection_jsons_path = os.path.join(pd, "JSONFile")
+
+collections_dict = {}
+collection_jsons_list = [
+    os.path.join(collection_jsons_path, file)
+    for file in os.listdir(collection_jsons_path)
+    if file.endswith(".json")
+]
+
+for file in collection_jsons_list:
+    with open(file) as json_file:
+        data = json.load(json_file)
+        globalID = generate_uuid5(data["ShortName"])
+        collections_dict[globalID] = data
+
+        # Check for missing properties
+        missing_properties = []
+        required_properties = ["DOI", "ShortName", "CollectionCitations","Abstract"]
+
+        for prop in required_properties:
+            if prop not in data:
+                missing_properties.append(prop)
+
+        # Print missing properties and file name
+        if missing_properties:
+            print(f"Missing properties in file {file}:")
+            for prop in missing_properties:
+                print(f"- {prop}")
+        #print(f"{file}")
+def add_dataset(batch: Batch, dataset_data: dict, dataset_id) -> str:
+    try:
+        DOI = dataset_data["DOI"]["DOI"]
+    except:
+	DOI = "0000"
+    try:
+        VariableLevel1 = dataset_data["ScienceKeywords"][0]["VariableLevel1"]
+    except:
+	VariableLevel1 = "N/A"
+    try:
+        VariableLevel2 = dataset_data["ScienceKeywords"][0]["VariableLevel2"]
+    except:
+	VariableLevel2 = "N/A"
+    dataset_object = {
+        "globalId": dataset_id,
+        "doi": DOI,
+        "shortName": dataset_data["ShortName"],
+        "longName": dataset_data["CollectionCitations"][0]["Title"],
+        "abstract": dataset_data["Abstract"].replace("\n", ""),
+        "vl1": VariableLevel1,
+        "vl2": VariableLevel2,
+    }
+
+    print(dataset_data["ShortName"])
+
+    for prop, value in dataset_object.items():
+        if value is None:
+           print(f"Null value found in file: {dataset_data['ShortName']} - Property: {prop}")
+        if dataset_dict["ShortName"] is None:
+           print(f"File with null shortname: {dataset_data['ShortName']}")
+    # add dataset to the batch
+    batch.add_data_object(data_object=dataset_object, class_name="Dataset", uuid=dataset_id)
+
+    return dataset_id
+
+client.batch.configure(batch_size=50, dynamic=True, callback=None, timeout_retries=10)
+with client.batch as batch:
+    for doc in collections_dict:
+        dataset_dict = collections_dict[doc]
+        dataset_id = add_dataset(batch=batch, dataset_data=dataset_dict, dataset_id=doc)
+        if dataset_dict["ShortName"] is None:
+            print(f"File with null shortname: {dataset_data['ShortName']}")
