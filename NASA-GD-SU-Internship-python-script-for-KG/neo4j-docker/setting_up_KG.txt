@@ -1,0 +1,19 @@
+1. enter the directory where the docker-compose.yml file is located
+2. run "docker-compose up" in the terminal and what until it is started 
+3. run "docker ps" and pull the container ID
+4. run "docker exec -it container_ID bash to enter the directory "/var/lib/neo4j"
+5. run "cd conf"
+6. run "apt updat" (this needs to be in the conf directory)
+7. run "apt install nano" 
+8. run "nano apoc.conf"
+9. inside the apoc.conf file add the following lines 
+    apoc.export.file.enabled=true
+    apoc.import.file.enabled=true
+    apoc.import.file.use_neo4j_config=true
+then save and exit the apoc.conf file and then exit the directory 
+10. run "docker restart container_ID"
+11. run "docker-compose up"
+12. In the neo4j browser enter the preset username and password which are both neo4j 
+13. Now it will ask you to change the password. Change the password to: shannon-spain-field-switch-topic-8121
+14. To run the python script you need to make sure the path to you the files you want to pull from is explicitly in the docker-compose.yml file as well as the python file
+15. Now you can run the python script and then check the neo4j browser for the generated graph
