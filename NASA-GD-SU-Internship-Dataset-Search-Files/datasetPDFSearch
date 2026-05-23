@@ -1,0 +1,125 @@
+import streamlit as st
+import weaviate
+
+# Set the URL of your Weaviate instance
+weaviate_url = "http://localhost:8080"
+
+# Initialize the Weaviate client
+client = weaviate.Client(weaviate_url)
+
+# Streamlit app
+def main():
+    st.title("Weaviate Vector Database Query")
+
+import re
+import streamlit as st
+import weaviate
+#from gensim.summarization import summarize
+from transformers import pipeline
+from summa import summarizer
+# Set the URL of your Weaviate instance
+weaviate_url = "http://localhost:8080"
+weaviate_url2 = "http://localhost:8899"
+# Initialize the Weaviate client
+client = weaviate.Client(weaviate_url)
+client2 = weaviate.Client(weaviate_url2)
+def truncate(s):
+    last_underscore = s.rfind("_")
+    if last_underscore != -1:
+        return s[:last_underscore]
+    else:
+	return s
+def abstractOnly(text):
+    start = text.find("Abstract")
+    end = text.find("\n", start)
+    if end == -1:
+       end = len(text)
+       return text[start + len("Abstract"):end].strip()
+    else:
+	return ""
+# Streamlit app
+def main():
+    st.title("GES-DISC Dataset Query")
+
+    # Input text box for user query
+    query = st.text_input("Enter your query here:", "")
+
+    # Button to execute the query
+    if st.button("Search"):
+        if query:
+            near_text_filter = {
+                 "concepts": [query],
+                 "certainty" : 0.6
+            }
+            count = 0
+            # Use the Weaviate client to query similar vectors for the "Dataset" class
+            response1 =   client.query.get("Dataset", ["shortName", "abstract", "longName", "doi", "vl1", "vl2"]).with_additional(["distance"]).with_near_text(near_text_filter).do()
+            #response2 =   client2.query.get("PDF", ["link"]).with_additional(["id"]).with_near_text(near_text_filter).do()
+            response2 =   client2.query.get("PDF", ["link","datasets {... on Dataset {shortname}}", "pdf_content" ]).with_additional(["id"]).with_near_text(near_text_filter).do()
+            response3 =   client2.query.get("Dataset", ["dataset_name"]).with_additional(["id"]).with_near_text(near_text_filter).do()
+            response4 =   client.query.get("Dataset", ["shortName", "abstract", "longName", "doi", "vl1", "vl2"]).with_additional(["distance"]).with_limit(1433).do()
+            #response2 = client2.query.get("PDF").with_near_text(near_text_filter).do()
+            # Extract the datasets that have similar vectors to the user's query
+            datasets = response1['data']['Get']['Dataset']
+            links = response2['data']['Get']['PDF']
+            pdf_datasets = response4['data']['Get']['Dataset']
+            #pdfs = response2.get("PDF", [])
+            #print(pdfs)
+            # If there are datasets returned, select the most relevant one based on your logic
+            if links:
+                st.write(f"Total PDFs Displayed: {len(links)}")
+                #st.write(links)
+                for link in links:
+                    url = link['link']
+                    #st.write(links[])
+                    st.write(f"PDF Link: {link['link']}")
+                    #st.write(f"PDF Content: {link['pdf_content']}")
+                    #summarizer = pipeline("summarization")
+                    #text = link['pdf_content']
+                    #abstract = abstractOnly(text)
+                    #if abstract != "":
+                       #st.write(f"PDF Abstract: {abstract}")
+                    #else:
+                       #st.write(f"No abstract was found for this PDF. For more information click the link provided")
+                    #chunk_size = 300
+                    #max_summary_length = 150
+                    #final_summary_max_length = 200
+                    #summaries = summarizeText(text, chunk_size=chunk_size, max_summary_length=max_summary_length, final_summary_max_length=final_summary_max_length)
+                    #st.write("Summary: {summaries}")
+                    #summary = summarizer(text, max_length=1000, min_length=50, do_sample=False)
+                    #sum = summary[0]['summary_text']
+                    #st.write(f"Summary of PDF: {sum}")
+                    for shortname in link['datasets']:
+                        #st.write(f"Dataset truncated: {truncate(dataset_name['dataset_name'])}")
+                        #st.write(f"Short Name: {shortname['shortname']}")
+                        for dataset in pdf_datasets:
+                           #st.write(f"ShortName Lisette: {dataset['shortName']}")
+                           #st.write(f"ShortName Armin : {shortname['shortname']}")
+                           if (dataset['shortName'] == (shortname['shortname'])):
+                             #st.write(f"inside dataset for loop meaning the shortnames are matching")
+                             st.write(f"Short Name: {shortname['shortname']}")
+                             st.write(f"Long Name: {dataset['longName']}")
+                             st.write(f"Science Keyword #1: {dataset['vl1']}")
+                             st.write(f"Science Keyword #2: {dataset['vl2']}")
+                             st.write(f"Abstract: {dataset['abstract']}")
+                             st.write(f"DOI: {dataset['doi']}")
+                    #dataset_names = pdf.get("datasets", [])
+                    #for dataset_name in dataset_names:
+                       #st.write(dataset_name)
+            #if pdf_datasets:
+                #st.write(pdf_datasets)
+                #for pdf_dataset in pdf_datasets:
+                    #st.write(f"pdf_datasets[]")
+                    #st.write(f"Dataset Name: {pdf_dataset['dataset_name']}")
+            if datasets:
+                st.write("Here are the datasets that might be relevant")
+                st.write(f"Total Dataset Displayed: {len(datasets)}")
+                for dataset in datasets:
+                    st.write(f"Short Name: {dataset['shortName']}")
+                    st.write(f"Long Name: {dataset['longName']}")
+                    st.write(f"Abstract: {dataset['abstract']}")
+
+            else:
+                st.write("I couldn't find a relevant dataset for your query.")
+if __name__ == "__main__":
+    main()
